@@ -115,8 +115,7 @@ class StarCraft2Env(MultiAgentEnv):
         health_test_distribution="stub",
         kill_unit_step_mul=2,
         fully_observable=False,
-        teammate_train_distribution="stub",
-        teammate_test_distribution="stub",
+        teammate_distribution="stub",
         ally_train_teams=None,
         ally_test_teams=None,
         show_capabilities=False,
@@ -266,7 +265,7 @@ class StarCraft2Env(MultiAgentEnv):
         # Meta MARL
         self.replace_teammates = replace_teammates
         self.distribution_function_init = get_distribution_function(
-            teammate_train_distribution
+            teammate_distribution
         )
         self.distribution_function = None
         attack_kwargs = {
@@ -316,8 +315,7 @@ class StarCraft2Env(MultiAgentEnv):
             "attack_test_distribution": attack_test_distribution,
             "health_train_distribution": health_train_distribution,
             "health_test_distribution": health_test_distribution,
-            "teammate_train_distribution": teammate_train_distribution,
-            "teammate_test_distribution": teammate_test_distribution,
+            "teammate_distribution": teammate_distribution,
             "attack_fixed_train_distributions": attack_fixed_train_distributions,
             "attack_fixed_test_distributions": attack_fixed_test_distributions,
             "health_fixed_train_distributions": health_fixed_train_distributions,
@@ -345,13 +343,9 @@ class StarCraft2Env(MultiAgentEnv):
             not self.zero_pad_unit_types and not self.observe_teammate_types
         )
         assert (
-            ally_train_teams is None
-            or teammate_train_distribution == "fixed_team"
+            ally_train_teams is None or teammate_distribution == "fixed_team"
         )
-        assert (
-            ally_test_teams is None
-            or teammate_test_distribution == "fixed_team"
-        )
+        assert ally_test_teams is None or teammate_distribution == "fixed_team"
 
         # Other
         self.game_version = game_version
@@ -488,27 +482,20 @@ class StarCraft2Env(MultiAgentEnv):
             ):
                 setattr(self, f"num_{task_type}_tasks", 1)
         elif self.replace_teammates:
-            if meta_marl_config[f"teammate_{task_type}_distribution"] == "all":
-                setattr(self, f"num_{task_type}_tasks", self.n_agents + 1)
-            elif (
-                meta_marl_config[f"teammate_{task_type}_distribution"]
-                == "fixed_team"
-            ):
+            if meta_marl_config[f"teammate_distribution"] == "all":
+                setattr(self, f"num_train_tasks", self.n_agents + 1)
+                setattr(self, f"num_test_tasks", self.n_agents + 1)
+            elif meta_marl_config[f"teammate_distribution"] == "fixed_team":
                 setattr(
                     self,
-                    f"num_{task_type}_tasks",
-                    len(meta_marl_config[f"ally_{task_type}_teams"]),
+                    f"num_train_tasks",
+                    len(meta_marl_config[f"ally_train_teams"]),
                 )
-
-    def _set_train_and_test_distribution(self):
-        if self.stochastic_attack:
-            self.train_distribution = self.attack_train_distribution
-            self.test_distribution = self.attack_test_distribution
-        elif self.stochastic_health:
-            self.train_distribution = self.health_train_distribution
-            self.test_distribution = self.health_test_distribution
-        elif self.replace_teammates:
-            self.train_distribution = self.te
+                setattr(
+                    self,
+                    f"num_test_tasks",
+                    len(meta_marl_config[f"ally_test_teams"]),
+                )
 
     def _turn_on_capability_flags(self):
         self.observe_attack_probs = (
@@ -1486,15 +1473,11 @@ class StarCraft2Env(MultiAgentEnv):
         return cap_feats
 
     def get_capabilities(self):
-        """Returns all agent capabilities in a list.
-        """
+        """Returns all agent capabilities in a list."""
         agents_cap = [
-            self.get_capabilities_agent(i)
-            for i in range(self.n_agents)
+            self.get_capabilities_agent(i) for i in range(self.n_agents)
         ]
-        agents_cap = np.concatenate(agents_cap, axis=0).astype(
-            np.float32
-        )
+        agents_cap = np.concatenate(agents_cap, axis=0).astype(np.float32)
         return agents_cap
 
     def get_state(self):
@@ -1529,7 +1512,9 @@ class StarCraft2Env(MultiAgentEnv):
         return state
 
     def get_ally_num_attributes(self):
-        return len(self.ally_state_attr_names) + len(self.capability_attr_names)
+        return len(self.ally_state_attr_names) + len(
+            self.capability_attr_names
+        )
 
     def get_enemy_num_attributes(self):
         return len(self.enemy_state_attr_names)
@@ -2181,7 +2166,9 @@ class StarCraft2Env(MultiAgentEnv):
 
     def get_env_info(self):
         env_info = super().get_env_info()
-        env_info["agent_features"] = self.ally_state_attr_names + self.capability_attr_names
+        env_info["agent_features"] = (
+            self.ally_state_attr_names + self.capability_attr_names
+        )
         env_info["enemy_features"] = self.enemy_state_attr_names
         env_info["n_train_tasks"] = self.num_train_tasks
         env_info["n_test_tasks"] = self.num_test_tasks
