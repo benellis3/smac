@@ -104,17 +104,18 @@ class StarCraft2Env(MultiAgentEnv):
         attack_probability_high=1.0,
         attack_fixed_train_distributions=None,
         attack_fixed_test_distributions=None,
-        attack_distribution="stub",
+        attack_train_distribution="stub",
+        attack_test_distribution="stub",
         stochastic_health=False,
         health_low=0.0,
         health_high=0.25,
         health_fixed_train_distributions=None,
         health_fixed_test_distributions=None,
-        health_distribution="stub",
+        health_train_distribution="stub",
+        health_test_distribution="stub",
         kill_unit_step_mul=2,
         fully_observable=False,
-        teammate_train_distribution="stub",
-        teammate_test_distribution="stub",
+        teammate_distribution="stub",
         ally_train_teams=None,
         ally_test_teams=None,
         show_capabilities=False,
@@ -264,7 +265,7 @@ class StarCraft2Env(MultiAgentEnv):
         # Meta MARL
         self.replace_teammates = replace_teammates
         self.distribution_function_init = get_distribution_function(
-            teammate_train_distribution
+            teammate_distribution
         )
         self.distribution_function = None
         attack_kwargs = {
@@ -273,9 +274,12 @@ class StarCraft2Env(MultiAgentEnv):
             "train_distributions": attack_fixed_train_distributions,
             "test_distributions": attack_fixed_test_distributions,
         }
-        self.attack_distribution = get_distribution(attack_distribution)(
-            self.n_agents, **attack_kwargs
-        )
+        self.attack_train_distribution_fn = get_distribution(
+            attack_train_distribution
+        )(self.n_agents, **attack_kwargs)
+        self.attack_test_distribution_fn = get_distribution(
+            attack_test_distribution
+        )(self.n_agents, **attack_kwargs)
         self.attack_train_distribution = None
         self.attack_test_distribution = None
         self.stochastic_attack = stochastic_attack
@@ -285,9 +289,12 @@ class StarCraft2Env(MultiAgentEnv):
             "train_distributions": health_fixed_train_distributions,
             "test_distributions": health_fixed_test_distributions,
         }
-        self.health_distribution = get_distribution(health_distribution)(
-            self.n_agents, **health_kwargs
-        )
+        self.health_train_distribution_fn = get_distribution(
+            health_train_distribution
+        )(self.n_agents, **health_kwargs)
+        self.health_test_distribution_fn = get_distribution(
+            health_test_distribution
+        )(self.n_agents, **health_kwargs)
         self.health_train_distribution = None
         self.health_test_distribution = None
         self.stochastic_health = stochastic_health
@@ -300,13 +307,24 @@ class StarCraft2Env(MultiAgentEnv):
             "ally_train_team_compositions": ally_train_teams,
             "ally_test_team_compositions": ally_test_teams,
         }
-        self.ally_train_teams = ally_train_teams
-        self.ally_test_teams = ally_test_teams
-        self.attack_train_tasks = attack_fixed_train_distributions
-        self.attack_test_tasks = attack_fixed_test_distributions
-        self.health_train_tasks = health_fixed_train_distributions
-        self.health_test_tasks = health_fixed_test_distributions
-        self._set_test_and_train_tasks()
+        self.meta_marl_config = {
+            "stochastic_attack": stochastic_attack,
+            "stochastic_health": stochastic_health,
+            "replace_teammates": replace_teammates,
+            "attack_train_distribution": attack_train_distribution,
+            "attack_test_distribution": attack_test_distribution,
+            "health_train_distribution": health_train_distribution,
+            "health_test_distribution": health_test_distribution,
+            "teammate_distribution": teammate_distribution,
+            "attack_fixed_train_distributions": attack_fixed_train_distributions,
+            "attack_fixed_test_distributions": attack_fixed_test_distributions,
+            "health_fixed_train_distributions": health_fixed_train_distributions,
+            "health_fixed_test_distributions": health_fixed_test_distributions,
+            "ally_train_teams": ally_train_teams,
+            "ally_test_teams": ally_test_teams,
+        }
+        self._set_num_tasks(self.meta_marl_config, "train")
+        self._set_num_tasks(self.meta_marl_config, "test")
         assert self._only_one_meta_marl_flag_on()
         assert (
             not self.zero_pad_stochastic_attack or not self.show_capabilities
@@ -325,13 +343,9 @@ class StarCraft2Env(MultiAgentEnv):
             not self.zero_pad_unit_types and not self.observe_teammate_types
         )
         assert (
-            ally_train_teams is None
-            or teammate_train_distribution == "fixed_team"
+            ally_train_teams is None or teammate_distribution == "fixed_team"
         )
-        assert (
-            ally_test_teams is None
-            or teammate_test_distribution == "fixed_team"
-        )
+        assert ally_test_teams is None or teammate_distribution == "fixed_team"
 
         # Other
         self.game_version = game_version
@@ -434,16 +448,54 @@ class StarCraft2Env(MultiAgentEnv):
         else:
             return not self.replace_teammates or not self.stochastic_health
 
-    def _set_test_and_train_tasks(self):
+    def _set_num_tasks(self, meta_marl_config, task_type):
         if self.stochastic_attack:
-            self.train_tasks = self.attack_train_tasks
-            self.test_tasks = self.attack_test_tasks
+            if meta_marl_config[f"attack_{task_type}_distribution"] == "fixed":
+                setattr(
+                    self,
+                    f"num_{task_type}_tasks",
+                    len(
+                        meta_marl_config[
+                            f"attack_fixed_{task_type}_distributions"
+                        ]
+                    ),
+                )
+            elif (
+                meta_marl_config[f"attack_{task_type}_distribution"]
+                == "uniform"
+            ):
+                setattr(self, f"num_{task_type}_tasks", 1)
         elif self.stochastic_health:
-            self.train_tasks = self.health_train_tasks
-            self.test_tasks = self.health_test_tasks
+            if meta_marl_config[f"health_{task_type}_distribution"] == "fixed":
+                setattr(
+                    self,
+                    f"num_{task_type}_tasks",
+                    len(
+                        meta_marl_config[
+                            f"health_fixed_{task_type}_distributions"
+                        ]
+                    ),
+                )
+            elif (
+                meta_marl_config[f"health_{task_type}_distribution"]
+                == "uniform"
+            ):
+                setattr(self, f"num_{task_type}_tasks", 1)
         elif self.replace_teammates:
-            self.train_tasks = self.ally_train_teams
-            self.test_tasks = self.ally_test_teams
+            if meta_marl_config[f"teammate_distribution"] == "all":
+                setattr(self, f"num_train_tasks", self.n_agents + 1)
+                setattr(self, f"num_test_tasks", self.n_agents + 1)
+            elif meta_marl_config[f"teammate_distribution"] == "fixed_team":
+                setattr(
+                    self,
+                    f"num_train_tasks",
+                    len(meta_marl_config[f"ally_train_teams"]),
+                )
+                setattr(
+                    self,
+                    f"num_test_tasks",
+                    len(meta_marl_config[f"ally_test_teams"]),
+                )
 
     def _turn_on_capability_flags(self):
         self.observe_attack_probs = (
@@ -549,17 +601,17 @@ class StarCraft2Env(MultiAgentEnv):
 
         # Information kept for counting the reward
         if not self.attack_train_distribution:
-            self.attack_train_distribution = self.attack_distribution(
+            self.attack_train_distribution = self.attack_train_distribution_fn(
                 test_mode=False
             )
-            self.attack_test_distribution = self.attack_distribution(
+            self.attack_test_distribution = self.attack_test_distribution_fn(
                 test_mode=True
             )
         if not self.health_train_distribution:
-            self.health_train_distribution = self.health_distribution(
+            self.health_train_distribution = self.health_train_distribution_fn(
                 test_mode=False
             )
-            self.health_test_distribution = self.health_distribution(
+            self.health_test_distribution = self.health_test_distribution_fn(
                 test_mode=True
             )
         self.agent_attack_probabilities, attack_prob_task_id = (
@@ -1421,15 +1473,11 @@ class StarCraft2Env(MultiAgentEnv):
         return cap_feats
 
     def get_capabilities(self):
-        """Returns all agent capabilities in a list.
-        """
+        """Returns all agent capabilities in a list."""
         agents_cap = [
-            self.get_capabilities_agent(i)
-            for i in range(self.n_agents)
+            self.get_capabilities_agent(i) for i in range(self.n_agents)
         ]
-        agents_cap = np.concatenate(agents_cap, axis=0).astype(
-            np.float32
-        )
+        agents_cap = np.concatenate(agents_cap, axis=0).astype(np.float32)
         return agents_cap
 
     def get_state(self):
@@ -1464,7 +1512,9 @@ class StarCraft2Env(MultiAgentEnv):
         return state
 
     def get_ally_num_attributes(self):
-        return len(self.ally_state_attr_names) + len(self.capability_attr_names)
+        return len(self.ally_state_attr_names) + len(
+            self.capability_attr_names
+        )
 
     def get_enemy_num_attributes(self):
         return len(self.enemy_state_attr_names)
@@ -2116,8 +2166,10 @@ class StarCraft2Env(MultiAgentEnv):
 
     def get_env_info(self):
         env_info = super().get_env_info()
-        env_info["agent_features"] = self.ally_state_attr_names + self.capability_attr_names
+        env_info["agent_features"] = (
+            self.ally_state_attr_names + self.capability_attr_names
+        )
         env_info["enemy_features"] = self.enemy_state_attr_names
-        env_info["n_train_tasks"] = len(self.train_tasks)
-        env_info["n_test_tasks"] = len(self.test_tasks)
+        env_info["n_train_tasks"] = self.num_train_tasks
+        env_info["n_test_tasks"] = self.num_test_tasks
         return env_info

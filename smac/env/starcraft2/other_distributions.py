@@ -2,6 +2,7 @@ from re import I
 import numpy as np
 from random import choice, shuffle
 
+
 DISTRIBUTIONS = {}
 
 
@@ -42,8 +43,10 @@ register_distribution("uniform", uniform_distribution)
 
 
 def fixed_attack_distribution(n_agents, **kwargs):
-    train_distributions = list(kwargs["train_distributions"])
-    test_distributions = list(kwargs["test_distributions"])
+    if kwargs["train_distributions"]:
+        train_distributions = list(kwargs["train_distributions"])
+    if kwargs["test_distributions"]:
+        test_distributions = list(kwargs["test_distributions"])
 
     def get_distribution(test_mode=False):
         if not test_mode:
