@@ -79,6 +79,7 @@ class StarCraft2Env(MultiAgentEnv):
         obs_terrain_height=False,
         obs_instead_of_state=False,
         obs_timestep_number=False,
+        obs_starcraaft=True,
         state_last_action=True,
         state_timestep_number=False,
         reward_sparse=False,
@@ -213,6 +214,7 @@ class StarCraft2Env(MultiAgentEnv):
         self.obs_timestep_number = obs_timestep_number
         self.state_last_action = state_last_action
         self.state_timestep_number = state_timestep_number
+        self.obs_starcraft = obs_starcraft
         if self.obs_all_health:
             self.obs_own_health = True
         self.n_obs_pathing = 8
@@ -983,7 +985,7 @@ class StarCraft2Env(MultiAgentEnv):
         ally_feats = np.zeros(ally_feats_dim, dtype=np.float32)
         own_feats = np.zeros(own_feats_dim, dtype=np.float32)
 
-        if unit.health > 0:  # otherwise dead, return all zeros
+        if unit.health > 0 and self.obs_starcraft:  # otherwise dead, return all zeros
             x = unit.pos.x
             y = unit.pos.y
             sight_range = self.unit_sight_range(agent_id)
