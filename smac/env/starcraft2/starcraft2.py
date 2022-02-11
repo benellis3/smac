@@ -985,7 +985,9 @@ class StarCraft2Env(MultiAgentEnv):
         ally_feats = np.zeros(ally_feats_dim, dtype=np.float32)
         own_feats = np.zeros(own_feats_dim, dtype=np.float32)
 
-        if unit.health > 0 and self.obs_starcraft:  # otherwise dead, return all zeros
+        if (
+            unit.health > 0 and self.obs_starcraft
+        ):  # otherwise dead, return all zeros
             x = unit.pos.x
             y = unit.pos.y
             sight_range = self.unit_sight_range(agent_id)
@@ -1288,8 +1290,8 @@ class StarCraft2Env(MultiAgentEnv):
         """
         Returns the size of the vector containing the agents' own features.
         """
-        own_feats = self.unit_type_bits
-        if self.obs_own_health:
+        own_feats = self.unit_type_bits if self.obs_starcraft else 0
+        if self.obs_own_health and self.obs_starcraft:
             own_feats += 1 + self.shield_bits_ally
         if self.obs_timestep_number:
             own_feats += 1
@@ -1318,8 +1320,10 @@ class StarCraft2Env(MultiAgentEnv):
 
         enemy_feats = n_enemies * n_enemy_feats
         ally_feats = n_allies * n_ally_feats
-
-        return move_feats + enemy_feats + ally_feats + own_feats
+        if self.obs_starcraft:
+            return move_feats + enemy_feats + ally_feats + own_feats
+        else:
+            return own_feats
 
     def get_state_size(self):
         """Returns the size of the global state."""
