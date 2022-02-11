@@ -79,7 +79,7 @@ class StarCraft2Env(MultiAgentEnv):
         obs_terrain_height=False,
         obs_instead_of_state=False,
         obs_timestep_number=False,
-        obs_starcraaft=True,
+        obs_starcraft=True,
         state_last_action=True,
         state_timestep_number=False,
         reward_sparse=False,
