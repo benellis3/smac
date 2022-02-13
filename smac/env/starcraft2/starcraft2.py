@@ -1099,20 +1099,24 @@ class StarCraft2Env(MultiAgentEnv):
             if self.unit_type_bits > 0:
                 type_id = self.get_unit_type_id(unit, True)
                 own_feats[ind + type_id] = 1
-
-        agent_obs = np.concatenate(
-            (
-                move_feats.flatten(),
-                enemy_feats.flatten(),
-                ally_feats.flatten(),
-                own_feats.flatten(),
+        if self.obs_starcraft:
+            agent_obs = np.concatenate(
+                (
+                    move_feats.flatten(),
+                    enemy_feats.flatten(),
+                    ally_feats.flatten(),
+                    own_feats.flatten(),
+                )
             )
-        )
 
         if self.obs_timestep_number:
-            agent_obs = np.append(
-                agent_obs, self._episode_steps / self.episode_limit
-            )
+            if self.obs_starcraft:
+                agent_obs = np.append(
+                    agent_obs, self._episode_steps / self.episode_limit
+                )
+            else:
+                agent_obs = np.zeros(own_feats_dim, dtype=np.float32)
+                agent_obs[:] = self._episode_steps / self.episode_limit
 
         if self.debug:
             logging.debug("Obs Agent: {}".format(agent_id).center(60, "-"))
