@@ -3,3 +3,4 @@ batch_size: 64
 hidden_features: 512
 lr: 1e-3
 epochs: 500
+device: ???
