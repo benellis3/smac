@@ -4,3 +4,4 @@ hidden_features: 512
 lr: 1e-4
 epochs: 500
 device: ???
+test_frequency: 1

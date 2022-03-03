@@ -42,6 +42,42 @@ def get_features(dataset):
     return obs.shape[0], state.shape[0]
 
 
+def train(dataloader, model, optimiser, loss_fn, device):
+    for obs, states in tqdm(dataloader):
+        obs = obs.to(device)
+        states = states.to(device)
+        pred_states = model(obs)
+        loss_val = loss_fn(pred_states, states)
+        optimiser.zero_grad()
+        loss_val.backward()
+        optimiser.step()
+
+
+def test(dataloader, model, loss_fn, device):
+    model.eval()
+    size = len(dataloader.dataset)
+    no_close_items = dataloader.dataset[0][1].shape[0] * size
+    test_loss = 0
+    close_items = 0
+    metrics = {}
+    with th.no_grad():
+        for obs, states in tqdm(dataloader):
+            obs = obs.to(device)
+            states = states.to(device)
+            pred_states = model(obs)
+            test_loss += loss_fn(pred_states, states).item()
+            close_items += (
+                th.isclose(pred_states, states, rtol=1e-2, atol=1e-5)
+                .type(th.float)
+                .sum()
+                .item()
+            )
+    metrics["test_loss"] = test_loss / size
+    metrics["close_items"] = close_items / no_close_items
+    model.train()
+    print(metrics)
+
+
 @hydra.main(config_path="conf", config_name="config")
 def main(cfg: OmegaConf):
 
@@ -51,28 +87,30 @@ def main(cfg: OmegaConf):
     dataloader = DataLoader(
         dataset=dataset, shuffle=True, batch_size=cfg.batch_size
     )
+    test_dataloader = DataLoader(dataset=dataset, batch_size=cfg.batch_size)
     # make the module
     in_features, out_features = get_features(dataset)
     ffnet = FFNet(in_features, out_features, cfg.hidden_features, cfg.device)
     ffnet.to(cfg.device)
     # make the optimiser
     optimiser = Adam(params=ffnet.parameters(), lr=cfg.lr)
-    loss = nn.MSELoss(reduction="sum")
+    loss = nn.MSELoss(reduction="mean")
     # iterate through the dataloader
     for epoch in range(cfg.epochs):
-        size = len(dataloader.dataset)
-        cum_loss = 0.0
-        for obs, states in tqdm(dataloader):
-            obs = obs.to(cfg.device)
-            states = states.to(cfg.device)
-            pred_states = ffnet(obs)
-            loss_val = loss(pred_states, states)
-            cum_loss += loss_val
-            optimiser.zero_grad()
-            loss_val.backward()
-            optimiser.step()
-
-        print(f"Epoch {epoch}: {cum_loss / size}")
+        train(
+            dataloader=dataloader,
+            model=ffnet,
+            optimiser=optimiser,
+            loss_fn=loss,
+            device=cfg.device,
+        )
+        if epoch % cfg.test_frequency == 0:
+            test(
+                dataloader=test_dataloader,
+                model=ffnet,
+                loss_fn=loss,
+                device=cfg.device,
+            )
 
 
 if __name__ == "__main__":
