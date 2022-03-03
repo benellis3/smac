@@ -1,6 +1,6 @@
-dataset_path: "/Users/benellis/src/smac/supervised_obs_and_states"
-batch_size: 64
+dataset_path: "/home/minsun/pymarl/supervised_obs_and_states"
+batch_size: 256
 hidden_features: 512
-lr: 1e-3
+lr: 1e-4
 epochs: 500
 device: ???

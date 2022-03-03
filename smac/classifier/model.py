@@ -1,4 +1,3 @@
-from black import out
 import torch.nn as nn
 import torch.nn.functional as F
 import torch as th
@@ -22,6 +21,9 @@ class FFNet(nn.Module):
         self.fc2 = nn.Linear(
             self.hidden_features, out_features=self.hidden_features
         )
+        self.fc3 = nn.Linear(
+            self.hidden_features, out_features=self.hidden_features
+        )
         self.fc_mean = nn.Linear(
             in_features=self.hidden_features, out_features=self.out_features
         )
@@ -31,6 +33,7 @@ class FFNet(nn.Module):
         x = x.to(self.device)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
         return self.fc_mean(x)
 
 
@@ -60,6 +63,8 @@ def main(cfg: OmegaConf):
         size = len(dataloader.dataset)
         cum_loss = 0.0
         for obs, states in tqdm(dataloader):
+            obs = obs.to(cfg.device)
+            states = states.to(cfg.device)
             pred_states = ffnet(obs)
             loss_val = loss(pred_states, states)
             cum_loss += loss_val
