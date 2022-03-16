@@ -1895,6 +1895,9 @@ class StarCraft2Env(MultiAgentEnv):
         ] + [unit.tag for unit in self.enemies.values() if unit.health > 0]
         self._kill_units(units_alive)
 
+    def _contains_only_medivac(self, team):
+        return all([unit == "medivac" for unit in team])
+
     def _create_new_team(self, test_mode=False):
         # unit_names = {
         #     self.id_to_unit_name_map[unit.unit_type]
@@ -1911,11 +1914,14 @@ class StarCraft2Env(MultiAgentEnv):
                 test_mode=False
             )
             self.test_distribution = self.distribution_function(test_mode=True)
-        team, team_id = (
-            next(self.train_distribution)
-            if not test_mode
-            else next(self.test_distribution)
-        )
+        team = []
+        # check we don't have any bad distributions
+        while self._contains_only_medivac(team):
+            team, team_id = (
+                next(self.train_distribution)
+                if not test_mode
+                else next(self.test_distribution)
+            )
 
         # TODO hardcoding init location. change this later for new maps
         ally_init_pos = sc_common.Point2D(x=8, y=16)
