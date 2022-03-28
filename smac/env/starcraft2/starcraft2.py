@@ -1115,7 +1115,7 @@ class StarCraft2Env(MultiAgentEnv):
                     agent_obs, self._episode_steps / self.episode_limit
                 )
             else:
-                agent_obs = np.zeros(own_feats_dim, dtype=np.float32)
+                agent_obs = np.zeros(1, dtype=np.float32)
                 agent_obs[:] = self._episode_steps / self.episode_limit
 
         if self.debug:
@@ -1297,9 +1297,6 @@ class StarCraft2Env(MultiAgentEnv):
         own_feats = self.unit_type_bits if self.obs_starcraft else 0
         if self.obs_own_health and self.obs_starcraft:
             own_feats += 1 + self.shield_bits_ally
-        if self.obs_timestep_number:
-            own_feats += 1
-
         return own_feats
 
     def get_obs_move_feats_size(self):
@@ -1325,9 +1322,16 @@ class StarCraft2Env(MultiAgentEnv):
         enemy_feats = n_enemies * n_enemy_feats
         ally_feats = n_allies * n_ally_feats
         if self.obs_starcraft:
-            return move_feats + enemy_feats + ally_feats + own_feats
+            # sorry for abusing that True==1 and False==0
+            return (
+                self.obs_timestep_number
+                + move_feats
+                + enemy_feats
+                + ally_feats
+                + own_feats
+            )
         else:
-            return own_feats
+            return 1 if self.obs_timestep_number else 0
 
     def get_state_size(self):
         """Returns the size of the global state."""
