@@ -1011,6 +1011,8 @@ class StarCraft2Env(MultiAgentEnv):
                 )
         if self.obs_own_health:
             self.obs_own_feature_names.append("own_health")
+            if self.shield_bits_ally > 0:
+                self.obs_own_feature_names.append("own_shield")
         if self.unit_type_bits > 0:
             self.obs_own_feature_names.extend(
                 ["own_unit_type"] * self.unit_type_bits
