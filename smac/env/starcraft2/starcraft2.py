@@ -278,6 +278,10 @@ class StarCraft2Env(MultiAgentEnv):
             self.ally_state_attr_names += bit_attr_names
             self.enemy_state_attr_names += bit_attr_names
 
+        self.obs_move_feature_names = []
+        self.obs_own_feature_names = []
+        self.obs_enemy_feature_names = []
+        self.obs_ally_feature_names = []
         self.agents = {}
         self.enemies = {}
         self._episode_count = 0
@@ -943,6 +947,84 @@ class StarCraft2Env(MultiAgentEnv):
         ]
         return vals
 
+    def build_feature_names(self):
+        self.obs_move_feature_names.extend(
+            [
+                "move_action_north",
+                "move_action_south",
+                "move_action_east",
+                "move_action_west",
+            ]
+        )
+
+        if self.obs_pathing_grid:
+            self.obs_move_feature_names.extend(
+                ["pathing_grid"] * self.n_obs_pathing
+            )
+        if self.obs_terrain_height:
+            self.obs_move_feature_names.extend(
+                ["terrain_height"] * self.n_obs_height
+            )
+
+        for e_id, e_unit in self.enemies.items():
+            self.obs_enemy_feature_names.extend(
+                [
+                    f"enemy_shootable_{e_id}",
+                    f"enemy_distance_{e_id}",
+                    f"enemy_relative_x_{e_id}",
+                    f"enemy_relative_y_{e_id}",
+                ]
+            )
+            if self.obs_all_health:
+                self.obs_enemy_feature_names.append(f"enemy_health_{e_id}")
+            if self.obs_all_health and self.shield_bits_enemy > 0:
+                self.obs_enemy_feature_names.append(f"enemy_shield_{e_id}")
+            if self.unit_type_bits > 0:
+                self.obs_enemy_feature_names.extend(
+                    [f"enemy_unit_type_{e_id}"] * self.unit_type_bits
+                )
+            # from the perspective of agent 0
+        al_ids = [al_id for al_id in range(self.n_agents) if al_id != 0]
+        for al_id in al_ids:
+            al_unit = self.get_unit_by_id(al_id)
+            self.obs_ally_feature_names.extend(
+                [
+                    f"ally_visible_{al_id}",
+                    f"ally_distance_{al_id}",
+                    f"ally_relative_x_{al_id}",
+                    f"ally_relative_y_{al_id}",
+                ]
+            )
+            if self.obs_all_health:
+                self.obs_ally_feature_names.append(f"ally_health_{al_id}")
+                if self.shield_bits_ally > 0:
+                    self.obs_ally_feature_names.extend(
+                        [f"ally_shield_bits_{al_id}"] * self.shield_bits_ally
+                    )
+            if self.unit_type_bits > 0:
+                self.obs_ally_feature_names.extend(
+                    [f"ally_unit_type_bits_{al_id}"] * self.unit_type_bits
+                )
+            if self.obs_last_action:
+                self.obs_ally_feature_names.extend(
+                    [f"ally_last_action_{al_id}" * self.n_actions]
+                )
+        if self.obs_own_health:
+            self.obs_own_feature_names.append("own_health")
+        if self.unit_type_bits > 0:
+            self.obs_own_feature_names.extend(
+                ["own_unit_type"] * self.unit_type_bits
+            )
+        if self.obs_timestep_number:
+            self.obs_own_feature_names.append("timestep")
+
+        return (
+            self.obs_move_feature_names
+            + self.obs_enemy_feature_names
+            + self.obs_ally_feature_names
+            + self.obs_own_feature_names
+        )
+
     def get_obs_agent(self, agent_id):
         """Returns observation for agent_id. The observation is composed of:
 
@@ -1060,7 +1142,6 @@ class StarCraft2Env(MultiAgentEnv):
                     ally_feats[i, 1] = dist / sight_range  # distance
                     ally_feats[i, 2] = (al_x - x) / sight_range  # relative X
                     ally_feats[i, 3] = (al_y - y) / sight_range  # relative Y
-
                     ind = 4
                     if self.obs_all_health:
                         ally_feats[i, ind] = (
