@@ -1,6 +1,4 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 from pysc2.maps import lib
 
@@ -20,7 +18,7 @@ map_param_registry = {
         "limit": 60,
         "a_race": "T",
         "b_race": "T",
-        "unit_type_bits": 0,
+        "unit_type_bits": 3,
         "map_type": "marines",
     },
     "8m": {
@@ -29,7 +27,7 @@ map_param_registry = {
         "limit": 120,
         "a_race": "T",
         "b_race": "T",
-        "unit_type_bits": 0,
+        "unit_type_bits": 3,
         "map_type": "marines",
     },
     "25m": {
@@ -38,7 +36,7 @@ map_param_registry = {
         "limit": 150,
         "a_race": "T",
         "b_race": "T",
-        "unit_type_bits": 0,
+        "unit_type_bits": 3,
         "map_type": "marines",
     },
     "5m_vs_6m": {
@@ -47,7 +45,7 @@ map_param_registry = {
         "limit": 70,
         "a_race": "T",
         "b_race": "T",
-        "unit_type_bits": 0,
+        "unit_type_bits": 3,
         "map_type": "marines",
     },
     "8m_vs_9m": {
@@ -56,7 +54,7 @@ map_param_registry = {
         "limit": 120,
         "a_race": "T",
         "b_race": "T",
-        "unit_type_bits": 0,
+        "unit_type_bits": 3,
         "map_type": "marines",
     },
     "10m_vs_11m": {
@@ -65,7 +63,7 @@ map_param_registry = {
         "limit": 150,
         "a_race": "T",
         "b_race": "T",
-        "unit_type_bits": 0,
+        "unit_type_bits": 3,
         "map_type": "marines",
     },
     "27m_vs_30m": {
@@ -74,7 +72,7 @@ map_param_registry = {
         "limit": 180,
         "a_race": "T",
         "b_race": "T",
-        "unit_type_bits": 0,
+        "unit_type_bits": 3,
         "map_type": "marines",
     },
     "MMM": {
@@ -101,7 +99,7 @@ map_param_registry = {
         "limit": 120,
         "a_race": "P",
         "b_race": "P",
-        "unit_type_bits": 2,
+        "unit_type_bits": 3,
         "map_type": "stalkers_and_zealots",
     },
     "3s5z": {
@@ -110,7 +108,7 @@ map_param_registry = {
         "limit": 150,
         "a_race": "P",
         "b_race": "P",
-        "unit_type_bits": 2,
+        "unit_type_bits": 3,
         "map_type": "stalkers_and_zealots",
     },
     "3s5z_vs_3s6z": {
@@ -119,7 +117,7 @@ map_param_registry = {
         "limit": 170,
         "a_race": "P",
         "b_race": "P",
-        "unit_type_bits": 2,
+        "unit_type_bits": 3,
         "map_type": "stalkers_and_zealots",
     },
     "3s_vs_3z": {
@@ -128,7 +126,7 @@ map_param_registry = {
         "limit": 150,
         "a_race": "P",
         "b_race": "P",
-        "unit_type_bits": 0,
+        "unit_type_bits": 3,
         "map_type": "stalkers",
     },
     "3s_vs_4z": {
@@ -146,7 +144,7 @@ map_param_registry = {
         "limit": 250,
         "a_race": "P",
         "b_race": "P",
-        "unit_type_bits": 0,
+        "unit_type_bits": 3,
         "map_type": "stalkers",
     },
     "1c3s5z": {
@@ -164,7 +162,7 @@ map_param_registry = {
         "limit": 150,
         "a_race": "T",
         "b_race": "P",
-        "unit_type_bits": 0,
+        "unit_type_bits": 3,
         "map_type": "marines",
     },
     "corridor": {
@@ -173,7 +171,7 @@ map_param_registry = {
         "limit": 400,
         "a_race": "P",
         "b_race": "Z",
-        "unit_type_bits": 0,
+        "unit_type_bits": 3,
         "map_type": "zealots",
     },
     "6h_vs_8z": {
@@ -182,7 +180,7 @@ map_param_registry = {
         "limit": 150,
         "a_race": "Z",
         "b_race": "P",
-        "unit_type_bits": 0,
+        "unit_type_bits": 3,
         "map_type": "hydralisks",
     },
     "2s_vs_1sc": {
@@ -191,7 +189,7 @@ map_param_registry = {
         "limit": 300,
         "a_race": "P",
         "b_race": "Z",
-        "unit_type_bits": 0,
+        "unit_type_bits": 3,
         "map_type": "stalkers",
     },
     "so_many_baneling": {
@@ -200,7 +198,7 @@ map_param_registry = {
         "limit": 100,
         "a_race": "P",
         "b_race": "Z",
-        "unit_type_bits": 0,
+        "unit_type_bits": 3,
         "map_type": "zealots",
     },
     "bane_vs_bane": {
@@ -209,7 +207,7 @@ map_param_registry = {
         "limit": 200,
         "a_race": "Z",
         "b_race": "Z",
-        "unit_type_bits": 2,
+        "unit_type_bits": 3,
         "map_type": "bane",
     },
     "2c_vs_64zg": {
@@ -218,7 +216,7 @@ map_param_registry = {
         "limit": 400,
         "a_race": "P",
         "b_race": "Z",
-        "unit_type_bits": 0,
+        "unit_type_bits": 3,
         "map_type": "colossus",
     },
 }
