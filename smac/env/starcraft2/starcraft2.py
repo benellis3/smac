@@ -80,6 +80,11 @@ class StarCraft2Env(MultiAgentEnv):
         obs_instead_of_state=False,
         obs_timestep_number=False,
         obs_starcraft=True,
+        obs_own_pos=False,
+        virtual_agents=False,
+        n_total_agents=0,
+        virtual_enemies=False,
+        n_total_enemies=0,
         state_last_action=True,
         state_timestep_number=False,
         reward_sparse=False,
@@ -206,12 +211,19 @@ class StarCraft2Env(MultiAgentEnv):
 
         # Observations and state
         self.obs_own_health = obs_own_health
+        self.obs_own_pos = obs_own_pos
         self.obs_all_health = obs_all_health
         self.obs_instead_of_state = obs_instead_of_state
         self.obs_last_action = obs_last_action
         self.obs_pathing_grid = obs_pathing_grid
         self.obs_terrain_height = obs_terrain_height
         self.obs_timestep_number = obs_timestep_number
+        self.n_total_agents = (
+            self.n_agents if not virtual_agents else n_total_agents
+        )
+        self.n_total_enemies = (
+            self.n_enemies if not virtual_enemies else n_total_enemies
+        )
         self.state_last_action = state_last_action
         self.state_timestep_number = state_timestep_number
         self.obs_starcraft = obs_starcraft
@@ -244,7 +256,7 @@ class StarCraft2Env(MultiAgentEnv):
         # Actions
         self.n_actions_no_attack = 6
         self.n_actions_move = 4
-        self.n_actions = self.n_actions_no_attack + self.n_enemies
+        self.n_actions = self.n_actions_no_attack + self.n_total_enemies
 
         # Map info
         self._agent_race = map_params["a_race"]
@@ -295,7 +307,7 @@ class StarCraft2Env(MultiAgentEnv):
         self.death_tracker_enemy = np.zeros(self.n_enemies)
         self.previous_ally_units = None
         self.previous_enemy_units = None
-        self.last_action = np.zeros((self.n_agents, self.n_actions))
+        self.last_action = np.zeros((self.n_total_agents, self.n_actions))
         self._min_unit_type = 0
         self.marine_id = self.marauder_id = self.medivac_id = 0
         self.hydralisk_id = self.zergling_id = self.baneling_id = 0
@@ -414,7 +426,7 @@ class StarCraft2Env(MultiAgentEnv):
         self.win_counted = False
         self.defeat_counted = False
 
-        self.last_action = np.zeros((self.n_agents, self.n_actions))
+        self.last_action = np.zeros((self.n_total_agents, self.n_actions))
 
         if self.heuristic_ai:
             self.heuristic_targets = [None] * self.n_agents
@@ -456,7 +468,7 @@ class StarCraft2Env(MultiAgentEnv):
         actions_int = [int(a) for a in actions]
 
         self.last_action = np.eye(self.n_actions)[np.array(actions_int)]
-
+        actions_int = actions_int[: self.n_agents]
         # Collect individual actions
         sc_actions = []
         if self.debug:
@@ -554,14 +566,17 @@ class StarCraft2Env(MultiAgentEnv):
             avail_actions[action] == 1
         ), "Agent {} cannot perform action {}".format(a_id, action)
 
-        unit = self.get_unit_by_id(a_id)
-        tag = unit.tag
-        x = unit.pos.x
-        y = unit.pos.y
+        if a_id < self.n_agents:
+            unit = self.get_unit_by_id(a_id)
+            tag = unit.tag
+            x = unit.pos.x
+            y = unit.pos.y
 
         if action == 0:
             # no-op (valid only when dead)
-            assert unit.health == 0, "No-op only available for dead agents."
+            assert (
+                self.n_total_agents > self.n_agents and a_id >= self.n_agents
+            ) or unit.health == 0, "No-op only available for dead agents."
             if self.debug:
                 logging.debug("Agent {}: Dead".format(a_id))
             return None
@@ -973,21 +988,21 @@ class StarCraft2Env(MultiAgentEnv):
         NOTE: Agents should have access only to their local observations
         during decentralised execution.
         """
-        unit = self.get_unit_by_id(agent_id)
-
         move_feats_dim = self.get_obs_move_feats_size()
         enemy_feats_dim = self.get_obs_enemy_feats_size()
         ally_feats_dim = self.get_obs_ally_feats_size()
         own_feats_dim = self.get_obs_own_feats_size()
-
         move_feats = np.zeros(move_feats_dim, dtype=np.float32)
         enemy_feats = np.zeros(enemy_feats_dim, dtype=np.float32)
         ally_feats = np.zeros(ally_feats_dim, dtype=np.float32)
         own_feats = np.zeros(own_feats_dim, dtype=np.float32)
 
+        unit = self.get_unit_by_id(agent_id)
+
         if (
-            unit.health > 0 and self.obs_starcraft
+            unit and unit.health > 0 and self.obs_starcraft
         ):  # otherwise dead, return all zeros
+            unit = self.get_unit_by_id(agent_id)
             x = unit.pos.x
             y = unit.pos.y
             sight_range = self.unit_sight_range(agent_id)
@@ -1051,7 +1066,6 @@ class StarCraft2Env(MultiAgentEnv):
                 al_id for al_id in range(self.n_agents) if al_id != agent_id
             ]
             for i, al_id in enumerate(al_ids):
-
                 al_unit = self.get_unit_by_id(al_id)
                 al_x = al_unit.pos.x
                 al_y = al_unit.pos.y
@@ -1095,7 +1109,10 @@ class StarCraft2Env(MultiAgentEnv):
                     max_shield = self.unit_max_shield(unit)
                     own_feats[ind] = unit.shield / max_shield
                     ind += 1
-
+            if self.obs_own_pos:
+                own_feats[ind] = x / self.map_x
+                own_feats[ind + 1] = y / self.map_y
+                ind += 2
             if self.unit_type_bits > 0:
                 type_id = self.get_unit_type_id(unit, True)
                 own_feats[ind + type_id] = 1
@@ -1137,7 +1154,9 @@ class StarCraft2Env(MultiAgentEnv):
         NOTE: Agents should have access only to their local observations
         during decentralised execution.
         """
-        agents_obs = [self.get_obs_agent(i) for i in range(self.n_agents)]
+        agents_obs = [
+            self.get_obs_agent(i) for i in range(self.n_total_agents)
+        ]
         return agents_obs
 
     def get_state(self):
@@ -1192,8 +1211,8 @@ class StarCraft2Env(MultiAgentEnv):
         nf_al = self.get_ally_num_attributes()
         nf_en = self.get_enemy_num_attributes()
 
-        ally_state = np.zeros((self.n_agents, nf_al))
-        enemy_state = np.zeros((self.n_enemies, nf_en))
+        ally_state = np.zeros((self.n_total_agents, nf_al))
+        enemy_state = np.zeros((self.n_total_enemies, nf_en))
 
         center_x = self.map_x / 2
         center_y = self.map_y / 2
@@ -1274,7 +1293,7 @@ class StarCraft2Env(MultiAgentEnv):
         if self.obs_all_health:
             nf_en += 1 + self.shield_bits_enemy
 
-        return self.n_enemies, nf_en
+        return self.n_total_enemies, nf_en
 
     def get_obs_ally_feats_size(self):
         """Returns the dimensions of the matrix containing ally features.
@@ -1288,7 +1307,7 @@ class StarCraft2Env(MultiAgentEnv):
         if self.obs_last_action:
             nf_al += self.n_actions
 
-        return self.n_agents - 1, nf_al
+        return self.n_total_agents - 1, nf_al
 
     def get_obs_own_feats_size(self):
         """
@@ -1297,6 +1316,8 @@ class StarCraft2Env(MultiAgentEnv):
         own_feats = self.unit_type_bits if self.obs_starcraft else 0
         if self.obs_own_health and self.obs_starcraft:
             own_feats += 1 + self.shield_bits_ally
+        if self.obs_own_pos and self.obs_starcraft:
+            own_feats += 2
         return own_feats
 
     def get_obs_move_feats_size(self):
@@ -1336,18 +1357,18 @@ class StarCraft2Env(MultiAgentEnv):
     def get_state_size(self):
         """Returns the size of the global state."""
         if self.obs_instead_of_state:
-            return self.get_obs_size() * self.n_agents
+            return self.get_obs_size() * self.n_total_agents
 
         nf_al = 4 + self.shield_bits_ally + self.unit_type_bits
         nf_en = 3 + self.shield_bits_enemy + self.unit_type_bits
 
         enemy_state = self.n_enemies * nf_en
-        ally_state = self.n_agents * nf_al
+        ally_state = self.n_total_agents * nf_al
 
         size = enemy_state + ally_state
 
         if self.state_last_action:
-            size += self.n_agents * self.n_actions
+            size += self.n_total_agents * self.n_actions
         if self.state_timestep_number:
             size += 1
 
@@ -1359,7 +1380,7 @@ class StarCraft2Env(MultiAgentEnv):
         are visible to each agent.
         """
         arr = np.zeros(
-            (self.n_agents, self.n_agents + self.n_enemies),
+            (self.n_total_agents, self.n_agents + self.n_enemies),
             dtype=np.bool,
         )
 
@@ -1430,7 +1451,7 @@ class StarCraft2Env(MultiAgentEnv):
     def get_avail_agent_actions(self, agent_id):
         """Returns the available actions for agent_id."""
         unit = self.get_unit_by_id(agent_id)
-        if unit.health > 0:
+        if unit and unit.health > 0:
             # cannot choose no-op when alive
             avail_actions = [0] * self.n_actions
 
@@ -1476,7 +1497,7 @@ class StarCraft2Env(MultiAgentEnv):
     def get_avail_actions(self):
         """Returns the available actions of all agents in a list."""
         avail_actions = []
-        for agent_id in range(self.n_agents):
+        for agent_id in range(self.n_total_agents):
             avail_agent = self.get_avail_agent_actions(agent_id)
             avail_actions.append(avail_agent)
         return avail_actions
@@ -1693,7 +1714,7 @@ class StarCraft2Env(MultiAgentEnv):
 
     def get_unit_by_id(self, a_id):
         """Get unit by ID."""
-        return self.agents[a_id]
+        return self.agents.get(a_id)
 
     def get_stats(self):
         stats = {
@@ -1708,6 +1729,7 @@ class StarCraft2Env(MultiAgentEnv):
 
     def get_env_info(self):
         env_info = super().get_env_info()
+        env_info["n_agents"] = self.n_total_agents
         env_info["agent_features"] = self.ally_state_attr_names
         env_info["enemy_features"] = self.enemy_state_attr_names
         return env_info
