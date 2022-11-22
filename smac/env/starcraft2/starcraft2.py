@@ -17,6 +17,7 @@ from absl import logging
 from pysc2 import maps
 from pysc2 import run_configs
 from pysc2.lib import protocol
+from pysc2.lib.units import Neutral, Protoss, Terran, Zerg
 
 from s2clientprotocol import common_pb2 as sc_common
 from s2clientprotocol import sc2api_pb2 as sc_pb
@@ -1419,34 +1420,32 @@ class StarCraft2Env(MultiAgentEnv):
 
     def get_unit_type_id(self, unit, ally):
         """Returns the ID of unit type in the given scenario."""
-        if ally:  # use new SC2 unit types
-            type_id = unit.unit_type - self._min_unit_type
-        else:  # use default SC2 unit types
-            if self.map_type == "stalkers_and_zealots":
-                # id(Stalker) = 74, id(Zealot) = 73
-                type_id = unit.unit_type - 73
-            elif self.map_type == "colossi_stalkers_zealots":
-                # id(Stalker) = 74, id(Zealot) = 73, id(Colossus) = 4
-                if unit.unit_type == 4:
-                    type_id = 0
-                elif unit.unit_type == 74:
-                    type_id = 1
-                else:
-                    type_id = 2
-            elif self.map_type == "bane":
-                if unit.unit_type == 9:
-                    type_id = 0
-                else:
-                    type_id = 1
-            elif self.map_type == "MMM":
-                if unit.unit_type == 51:
-                    type_id = 0
-                elif unit.unit_type == 48:
-                    type_id = 1
-                else:
-                    type_id = 2
-
-        return type_id
+        # TODO Will not work with different races on either side I
+        # believe -- shouldn't be difficult to fix.
+        if self._agent_race == "P":
+            if unit.unit_type in (self.stalker_id, Protoss.Stalker):
+                return 0
+            if unit.unit_type in (self.zealot_id, Protoss.Zealot):
+                return 1
+            if unit.unit_type in (self.colossus_id, Protoss.Colossus):
+                return 2
+            raise AttributeError()
+        if self._agent_race == "T":
+            if unit.unit_type in (self.marine_id, Terran.Marine):
+                return 0
+            if unit.unit_type in (self.marauder_id, Terran.Marauder):
+                return 1
+            if unit.unit_type in (self.medivac_id, Terran.Medivac):
+                return 2
+            raise AttributeError()
+        if self._agent_race == "Z":
+            if unit.unit_type in (self.zergling_id, Zerg.Zergling):
+                return 0
+            if unit.unit_type in (self.hydralisk_id, Zerg.Hydralisk):
+                return 1
+            if unit.unit_type in (self.baneling_id, Zerg.Baneling):
+                return 2
+            raise AttributeError()
 
     def get_avail_agent_actions(self, agent_id):
         """Returns the available actions for agent_id."""
