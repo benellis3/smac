@@ -26,6 +26,20 @@ class MiniSMACStarCraft2Env(StarCraft2Env):
             f"unit_type_bits_{i}" for i in range(self.unit_type_bits)
         ]
         self.time_per_step = 1.0 / 16
+        # map from MiniSMAC to SMAC movement actions
+        self.actions_map = {
+            0: 2,
+            1: 4,
+            2: 3,
+            3: 5,
+        }
+
+    def step(self, actions):
+        actions = [int(a) for a in actions]
+        # remap the actions, all else is the same
+        for i, a in enumerate(actions):
+            actions[i] = self.actions_map[a] if a in self.actions_map else a
+        return super().step(actions)
 
     def get_obs_agent(self, agent_id):
         ally_unit_obs = np.zeros(
