@@ -46,7 +46,7 @@ class MiniSMACStarCraft2Env(StarCraft2Env):
             (self.n_agents - 1, len(self.other_unit_features))
         )
         enemy_unit_obs = np.zeros(
-            (self.n_agents - 1, len(self.other_unit_features))
+            (self.n_enemies, len(self.other_unit_features))
         )
         own_obs = np.zeros((1, len(self.own_features)))
         # iterate through the allies
