@@ -91,12 +91,12 @@ class MiniSMACStarCraft2Env(StarCraft2Env):
                     # TODO again assume that this is a marine
                     enemy_unit_obs[e_id][5] = 1
             unit = self.get_unit_by_id(agent_id)
-            own_obs[0] = unit.health / unit.health_max
-            own_obs[1] = x / self.map_x
-            own_obs[2] = y / self.map_y
-            own_obs[3] = unit.weapon_cooldown * self.time_per_step
+            own_obs[0][0] = unit.health / unit.health_max
+            own_obs[0][1] = x / self.map_x
+            own_obs[0][2] = y / self.map_y
+            own_obs[0][3] = unit.weapon_cooldown * self.time_per_step
             # TODO make assumption this is a marine
-            own_obs[4] = 1
+            own_obs[0][4] = 1
 
         agent_obs = np.concatenate(
             (
