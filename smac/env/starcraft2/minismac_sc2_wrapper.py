@@ -38,7 +38,11 @@ class MiniSMACStarCraft2Env(StarCraft2Env):
         actions = [int(a) for a in actions]
         # remap the actions, all else is the same
         for i, a in enumerate(actions):
-            actions[i] = self.actions_map[a] if a in self.actions_map else a
+            unit = self.get_unit_by_id(i)
+            if unit.health > 0:
+                actions[i] = self.actions_map[a] if a in self.actions_map else a
+            else:
+                actions[i] = 0
         return super().step(actions)
 
     def get_obs_agent(self, agent_id):
