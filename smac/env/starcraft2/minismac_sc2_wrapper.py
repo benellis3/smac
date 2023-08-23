@@ -5,7 +5,7 @@ import numpy as np
 class MiniSMACStarCraft2Env(StarCraft2Env):
     def __init__(self, **env_kwargs):
         super().__init__(**env_kwargs)
-        self.unit_type_bits = 6
+        self.minismac_unit_type_bits = 6
         self.other_unit_features = [
             "health",
             "position_x",
@@ -14,7 +14,7 @@ class MiniSMACStarCraft2Env(StarCraft2Env):
             "weapon_cooldown",
         ]
         self.other_unit_features += [
-            f"unit_type_bits_{i}" for i in range(self.unit_type_bits)
+            f"unit_type_bits_{i}" for i in range(self.minismac_unit_type_bits)
         ]
         self.own_features = [
             "health",
@@ -23,7 +23,7 @@ class MiniSMACStarCraft2Env(StarCraft2Env):
             "weapon_cooldown",
         ]
         self.own_features += [
-            f"unit_type_bits_{i}" for i in range(self.unit_type_bits)
+            f"unit_type_bits_{i}" for i in range(self.minismac_unit_type_bits)
         ]
         self.time_per_step = 1.0 / 16
         # map from MiniSMAC to SMAC movement actions
