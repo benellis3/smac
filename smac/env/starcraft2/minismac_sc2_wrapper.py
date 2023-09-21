@@ -43,9 +43,9 @@ class MiniSMACStarCraft2Env(StarCraft2Env):
             if unit.health > 0:
                 # SMAC has an extra action.
                 actions[i] = self.actions_map[a] if a in self.actions_map else a + 1
-                avail_actions = np.array(self.get_avail_agent_actions(i))
-                if avail_actions[actions[i]] != 1:
-                    actions[i] = np.random.choice(self.n_actions, 1, p=avail_actions / avail_actions.sum())
+                # avail_actions = np.array(self.get_avail_agent_actions(i))
+                # if avail_actions[actions[i]] != 1:
+                #     actions[i] = np.random.choice(self.n_actions, 1, p=avail_actions / avail_actions.sum())
             else:
                 actions[i] = 0
         return super().step(actions)
@@ -125,3 +125,11 @@ class MiniSMACStarCraft2Env(StarCraft2Env):
         return len(self.other_unit_features) * (
             self.n_agents + self.n_enemies - 1
         ) + len(self.own_features)
+
+    def get_avail_agent_actions(self, agent_id):
+        avail_actions_old = super().get_avail_agent_actions(agent_id)
+        avail_actions = np.zeros((self.n_actions - 1,))
+        for k, v in self.actions_map.items():
+            avail_actions[k] = avail_actions_old[v]
+        avail_actions[5:] = avail_actions_old[6:]
+        return avail_actions
