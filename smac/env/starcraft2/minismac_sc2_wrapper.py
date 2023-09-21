@@ -42,7 +42,7 @@ class MiniSMACStarCraft2Env(StarCraft2Env):
             unit = self.get_unit_by_id(i)
             if unit.health > 0:
                 # SMAC has an extra action.
-                actions[i] = self.actions_map[a] if a in self.actions_map else a - 1
+                actions[i] = self.actions_map[a] if a in self.actions_map else a + 1
                 avail_actions = np.array(self.get_avail_agent_actions(i))
                 if avail_actions[actions[i]] != 1:
                     actions[i] = np.random.choice(self.n_actions, 1, p=avail_actions / avail_actions.sum())
